@@ -1,0 +1,16 @@
+[package]
+name = "aeovexor_spatial_core"
+version = "2.4.0"
+edition = "2021"
+authors = ["Frank Asante Van Laarhoven <frankleroyvan@gmail.com>"]
+description = "High-performance Rust core for Aeovexor.AI spatial intelligence and LiDAR streaming"
+
+[lib]
+name = "aeovexor_spatial_core"
+crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "aeovexor-spatial-cli"
+path = "src/main.rs"
+
+[dependencies]

@@ -40,3 +40,12 @@ Thumbs.db
 *.log
 tmp/
 temp/
+
+# Native C++, Rust, and Go build artifacts
+native/cpp/build/
+*.dylib
+*.a
+*.o
+native/rust/target/
+services/go-telemetry/aeovexor-telemetry-service
+

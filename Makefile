@@ -3,23 +3,45 @@ UVICORN ?= /Library/Frameworks/Python.framework/Versions/3.11/bin/uvicorn
 PORT ?= 8765
 HOST ?= 127.0.0.1
 
-.PHONY: help install test studio benchmark verify-gaps slam detect segment nav twin clean
+.PHONY: help install test test-all studio benchmark verify-gaps slam detect segment nav twin clean build-cpp build-rust build-go build-all telemetry-service
 
 help:
 	@echo "AEOVEXOR 3D Spatial Intelligence Platform & Universal Testbed"
 	@echo "============================================================="
-	@echo "PERCEIVE · RECONSTRUCT · UNDERSTAND"
-	@echo "  make install      - Install package with workspace, dev, and full extras"
-	@echo "  make test         - Run all 23 unit & mathematical regression tests"
+	@echo "POLYGLOT CORE: C++ (SIMD/CSF) · Rust (Zero-Copy) · Go (Telemetry) · Python (FastAPI/AI)"
+	@echo "  make build-all    - Build C++, Rust, and Go native acceleration binaries"
+	@echo "  make build-cpp    - Compile C++ SIMD shared library & test suite"
+	@echo "  make build-rust   - Compile Rust zero-copy LiDAR CLI & cdylib"
+	@echo "  make build-go     - Compile Go high-concurrency telemetry streaming service"
+	@echo "  make test-all     - Run full polyglot test suite across Python, C++, Rust, and Go"
+	@echo "  make telemetry-service - Launch Go telemetry streaming daemon on :8766"
+	@echo "  make test         - Run Python unit and mathematical regression tests"
 	@echo "  make studio       - Launch FastAPI & Uvicorn Research Console on $(HOST):$(PORT)"
-	@echo "  make benchmark    - Run E1-E5 research experiment suite on Velodyne"
-	@echo "  make verify-gaps  - Verify all 8 critical blueprint research gaps"
-	@echo "  make slam         - Run 3D mapping and SLAM trajectory reconstruction"
-	@echo "  make detect       - Run 3D object detection (vehicles, people, obstacles)"
-	@echo "  make segment      - Run point-cloud semantic surface segmentation"
-	@echo "  make nav          - Run autonomous navigation clearance & traversability"
-	@echo "  make twin         - Generate digital twin watertight TSDF surface mesh"
 	@echo "  make clean        - Remove caches and build artifacts"
+
+build-cpp:
+	mkdir -p native/cpp/build && cd native/cpp/build && cmake .. && make
+
+build-rust:
+	cd native/rust && cargo build --release
+
+build-go:
+	cd services/go-telemetry && go build -o aeovexor-telemetry-service .
+
+build-all: build-cpp build-rust build-go
+
+test-all:
+	@echo "=== [1/4] Running C++ Native Core Tests ==="
+	cd native/cpp/build && ./test_spatialforge_cpp
+	@echo "=== [2/4] Running Rust Spatial Core Tests ==="
+	cd native/rust && cargo test
+	@echo "=== [3/4] Running Go Telemetry Engine Tests ==="
+	cd services/go-telemetry && go test -v ./...
+	@echo "=== [4/4] Running Python & Polyglot Integration Tests ==="
+	PYTHONPATH=. $(PYTHON) -m pytest -v tests
+
+telemetry-service:
+	./services/go-telemetry/aeovexor-telemetry-service --port 8766
 
 install:
 	$(PYTHON) -m pip install -e ".[workspace,dev,full]"

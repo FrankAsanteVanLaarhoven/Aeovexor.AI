@@ -1435,3 +1435,55 @@ def report() -> str:
 def console() -> str:
     """Renders the AEOVEXOR Studio Precision 3D Geometry Workspace with Canva for 3D Data Manipulation."""
     return render_console_html()
+
+
+@app.get("/api/native/status")
+def api_native_status() -> dict:
+    """Returns operational status of C++, Rust, and Go subsystems."""
+    from spatialforge.native_bridge import get_native_status
+    return get_native_status()
+
+
+@app.post("/api/native/voxel")
+def api_native_voxel(data: dict) -> dict:
+    """Accelerated C++ SIMD voxel downsampling endpoint."""
+    from spatialforge.native_bridge import native_cpp_voxel_filter
+    points_list = data.get("points", [])
+    leaf_size = float(data.get("leaf_size", 0.2))
+    pts = np.array(points_list, dtype=np.float32)
+    filtered = native_cpp_voxel_filter(pts, leaf_size=leaf_size)
+    return {
+        "status": "success",
+        "engine": "C++ Native SIMD",
+        "original_count": len(pts),
+        "filtered_count": len(filtered),
+        "points": filtered.tolist() if len(filtered) < 20000 else filtered[:1000].tolist(),
+    }
+
+
+@app.post("/api/native/sor")
+def api_native_sor(data: dict) -> dict:
+    """Accelerated C++ Statistical Outlier Removal endpoint."""
+    from spatialforge.native_bridge import native_cpp_sor_filter
+    points_list = data.get("points", [])
+    k = int(data.get("k", 10))
+    std_ratio = float(data.get("std_ratio", 1.0))
+    pts = np.array(points_list, dtype=np.float32)
+    inliers = native_cpp_sor_filter(pts, k=k, std_ratio=std_ratio)
+    return {
+        "status": "success",
+        "engine": "C++ Native SOR",
+        "original_count": len(pts),
+        "inlier_count": len(inliers),
+        "points": inliers.tolist() if len(inliers) < 20000 else inliers[:1000].tolist(),
+    }
+
+
+@app.post("/api/native/rust/benchmark")
+def api_native_rust_benchmark(data: dict) -> dict:
+    """High-speed Rust binary parser benchmark."""
+    from spatialforge.native_bridge import native_rust_benchmark_kitti
+    dataset = data.get("dataset", "examples/velodyne_000008.bin")
+    res = native_rust_benchmark_kitti(dataset)
+    return res
+
