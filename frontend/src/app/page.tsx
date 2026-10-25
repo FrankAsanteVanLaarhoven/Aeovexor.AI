@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import Viewport3D from "../components/Viewport3D";
 import ViewportSplit3D from "../components/ViewportSplit3D";
 import CloudCompareToolbar from "../components/CloudCompareToolbar";
@@ -87,6 +88,14 @@ export default function StudioPage() {
             </svg>
             AI Researcher
           </button>
+
+          {/* Developer IDE Link */}
+          <Link
+            href="/ide"
+            className="px-3 py-1 rounded text-xs font-mono font-semibold bg-white/5 hover:bg-cyan-500/15 hover:text-cyan border border-white/10 text-slate-200 transition-all flex items-center gap-1.5"
+          >
+            <span>&lt;/&gt;</span> Developer IDE
+          </Link>
 
           <button className="px-3 py-1 rounded text-xs font-mono font-semibold bg-white/5 hover:bg-white/10 border border-white/10 text-slate-200">
             Export 3D
