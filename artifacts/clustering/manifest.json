@@ -1,0 +1,26 @@
+{
+  "schema": "spatialforge3d.run.v1",
+  "version": "1.0.0",
+  "task": "clustering",
+  "seed": 42,
+  "config": {
+    "seed": 42,
+    "task": "clustering",
+    "input": "../examples/synthetic.npz",
+    "algorithm": {
+      "method": "dbscan",
+      "eps": 0.28,
+      "min_samples": 5
+    }
+  },
+  "inputs": {
+    "input": {
+      "path": "/Users/favl/Downloads/spatialforge3d_benchmark/configs/../examples/synthetic.npz",
+      "sha256": "a2db303cd554d6fa1e473fc7b6f0c72295e907e2203c00b45b6721449c32e06c"
+    }
+  },
+  "python": "3.11.4",
+  "numpy": "1.25.2",
+  "platform": "macOS-26.3.1-arm64-arm-64bit",
+  "pid": 36909
+}

@@ -1,0 +1,4 @@
+adjusted_rand_index:
+  min: 0.99
+noise_fraction:
+  max: 0.05

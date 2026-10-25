@@ -1,0 +1,11 @@
+seed: 42
+task: clustering
+input: ../examples/velodyne_000008.bin
+format: bin
+voxel_size: 0.3
+algorithm:
+  method: adaptive
+  eps: 0.8
+  min_samples: 6
+  normal_weight: 0.5
+  range_adaptive: true

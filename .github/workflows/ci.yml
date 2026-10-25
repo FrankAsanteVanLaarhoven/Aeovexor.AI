@@ -1,0 +1,23 @@
+name: benchmark-ci
+on: [push, pull_request, workflow_dispatch]
+jobs:
+  cpu:
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.11']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: python -m pip install -e '.[dev]'
+      - run: pytest -q
+      - run: python scripts/make_synthetic.py
+      - run: spatialforge run --config configs/synthetic_clustering.yaml --out artifacts/clustering
+      - run: spatialforge gate --metrics artifacts/clustering/metrics.json --thresholds configs/gates.yaml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: benchmark-${{ matrix.python-version }}
+          path: artifacts/

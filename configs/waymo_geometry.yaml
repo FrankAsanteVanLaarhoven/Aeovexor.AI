@@ -1,0 +1,6 @@
+seed: 42
+task: geometry
+input: /Users/favl/Downloads/waymo-open-dataset-master 2/tutorial/frames
+format: waymo
+algorithm:
+  k: 16

@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+[project]
+name = "spatialforge3d-benchmark"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = ["numpy>=1.24", "scipy>=1.10", "scikit-learn>=1.1", "PyYAML>=6"]
+[project.optional-dependencies]
+workspace = ["fastapi>=0.100", "uvicorn>=0.22", "websockets>=11.0"]
+full = ["open3d>=0.18", "hdbscan>=0.8", "torch>=2.0"]
+dev = ["pytest>=7"]
+[project.scripts]
+spatialforge = "spatialforge.cli:main"
+[tool.setuptools.packages.find]
+include = ["spatialforge*", "workspace*"]

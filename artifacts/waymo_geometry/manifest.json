@@ -1,0 +1,25 @@
+{
+  "schema": "spatialforge3d.run.v1",
+  "version": "1.0.0",
+  "task": "geometry",
+  "seed": 42,
+  "config": {
+    "seed": 42,
+    "task": "geometry",
+    "input": "/Users/favl/Downloads/waymo-open-dataset-master 2/tutorial/frames",
+    "format": "waymo",
+    "algorithm": {
+      "k": 16
+    }
+  },
+  "inputs": {
+    "input": {
+      "path": "/Users/favl/Downloads/waymo-open-dataset-master 2/tutorial/frames",
+      "sha256": "4ef1610882d6b39f560fe9fd1fac1d4a0bdbc7872bd7bc949237b25d1bae3a45"
+    }
+  },
+  "python": "3.11.4",
+  "numpy": "1.25.2",
+  "platform": "macOS-26.3.1-arm64-arm-64bit",
+  "pid": 36964
+}

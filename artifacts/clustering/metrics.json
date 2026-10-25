@@ -1,0 +1,10 @@
+{
+  "points": 160,
+  "clusters": 2,
+  "noise_fraction": 0.0,
+  "adjusted_rand_index": 1.0,
+  "adjusted_mutual_info": 1.0,
+  "predicted_noise_fraction": 0.0,
+  "num_clusters_found": 2,
+  "elapsed_seconds": 0.005236
+}

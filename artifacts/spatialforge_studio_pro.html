@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SpatialForge-3D Studio | Ouster-Style Research Testbed</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌐</text></svg>">
+  <style>
+    :root {
+      --bg-dark: #080a0f;
+      --bg-panel: #0d111a;
+      --bg-header: #121824;
+      --bg-hover: #1a2334;
+      --border: rgba(255, 255, 255, 0.09);
+      --cyan: #38bdf8;
+      --cyan-glow: rgba(56, 189, 248, 0.25);
+      --purple: #c084fc;
+      --emerald: #34d399;
+      --amber: #fbbf24;
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg-dark);
+      color: var(--text);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      user-select: none;
+    }
+
+    /* Ouster-Style Top Navigation */
+    .top-nav {
+      height: 46px;
+      background: var(--bg-header);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      z-index: 100;
+    }
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 700;
+      font-size: 0.95rem;
+    }
+    .dataset-badge {
+      font-size: 0.8rem;
+      font-family: monospace;
+      color: var(--cyan);
+      background: rgba(56, 189, 248, 0.1);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      padding: 3px 10px;
+      border-radius: 4px;
+    }
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 5px 10px;
+      border-radius: 5px;
+      font-size: 0.76rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s;
+    }
+    .btn:hover {
+      background: var(--bg-hover);
+      color: var(--text);
+      border-color: rgba(255,255,255,0.2);
+    }
+    .btn.active {
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--cyan);
+      border-color: var(--cyan);
+    }
+    .btn-primary {
+      background: #0284c7;
+      color: white;
+      border-color: #38bdf8;
+    }
+
+    /* Main Container */
+    .main-wrap {
+      flex: 1;
+      display: flex;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Left Ouster-Style Controls Sidebar */
+    .sidebar {
+      width: 290px;
+      background: var(--bg-panel);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      z-index: 40;
+    }
+    .sidebar-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg-header);
+    }
+    .s-tab {
+      flex: 1;
+      padding: 10px 0;
+      text-align: center;
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+    }
+    .s-tab.active {
+      color: var(--cyan);
+      border-bottom-color: var(--cyan);
+      background: rgba(56, 189, 248, 0.05);
+    }
+    .s-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 14px;
+    }
+    .sec-title {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      color: var(--text-dim);
+      margin: 14px 0 8px 0;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .sec-title:first-child { margin-top: 0; }
+    .control-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      font-size: 0.78rem;
+    }
+    .control-select, .control-input {
+      background: var(--bg-dark);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 5px 8px;
+      border-radius: 4px;
+      font-size: 0.76rem;
+      outline: none;
+    }
+    .control-select:focus, .control-input:focus {
+      border-color: var(--cyan);
+    }
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      font-size: 0.78rem;
+      cursor: pointer;
+    }
+    .toggle-row input { cursor: pointer; }
+
+    /* 3D Viewport Area */
+    .viewport-box {
+      flex: 1;
+      position: relative;
+      background: #020408;
+      overflow: hidden;
+    }
+    #viewport-3d {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* 2D Panoramic Image Projection Strip (Ouster-style) */
+    .pano-strip {
+      position: absolute;
+      top: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 580px;
+      height: 96px;
+      background: rgba(13, 17, 26, 0.88);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 6px 10px;
+      z-index: 50;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+    }
+    .pano-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+    .pano-canvas-wrap {
+      flex: 1;
+      position: relative;
+      border-radius: 4px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+    #pano-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .pano-ruler {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.62rem;
+      font-family: monospace;
+      color: var(--text-dim);
+      padding: 2px 2px 0 2px;
+    }
+
+    /* Metric Cards Floating */
+    .stats-overlay {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      z-index: 50;
+      display: flex;
+      gap: 10px;
+    }
+    .stat-chip {
+      background: rgba(13, 17, 26, 0.85);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--border);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.72rem;
+    }
+    .stat-chip strong { color: var(--cyan); font-family: monospace; font-size: 0.82rem; }
+
+    /* Bottom Playback Bar (Ouster-style) */
+    .playback-bar {
+      height: 40px;
+      background: var(--bg-header);
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      gap: 14px;
+      z-index: 50;
+    }
+    .progress-track {
+      flex: 1;
+      height: 5px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 3px;
+      cursor: pointer;
+      position: relative;
+    }
+    .progress-fill {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;
+      width: 25%;
+      background: var(--cyan);
+      border-radius: 3px;
+    }
+
+    /* Picture-in-Picture Presenter Studio */
+    .pip-container {
+      position: absolute;
+      bottom: 60px;
+      right: 20px;
+      width: 220px;
+      background: rgba(13, 17, 26, 0.92);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-accent);
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), 0 0 15px rgba(56, 189, 248, 0.2);
+      z-index: 100;
+      display: none;
+      cursor: grab;
+    }
+    .pip-header {
+      background: var(--bg-header);
+      padding: 6px 10px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: var(--cyan);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+    }
+    .pip-video {
+      width: 100%;
+      height: 130px;
+      object-fit: cover;
+      background: #000;
+    }
+    .pip-audio-meter {
+      height: 12px;
+      width: 100%;
+      background: #06090e;
+      display: block;
+    }
+    .pip-actions {
+      display: flex;
+      justify-content: space-around;
+      padding: 6px;
+      background: var(--bg-header);
+      border-top: 1px solid var(--border);
+    }
+
+    /* Slicing & Measurement Panels */
+    .floating-dialog {
+      position: absolute;
+      top: 60px;
+      right: 20px;
+      width: 260px;
+      background: rgba(13, 17, 26, 0.92);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      z-index: 80;
+      display: none;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.7);
+    }
+    .recording-badge {
+      animation: pulse-red 1.2s infinite;
+      color: #f43f5e;
+      font-weight: 800;
+    }
+    @keyframes pulse-red {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+  </style>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+
+  <!-- Top Nav Bar -->
+  <div class="top-nav">
+    <div class="brand-group">
+      <span style="font-size: 1.2rem;">🌐</span>
+      <span>SpatialForge Studio</span>
+      <span class="dataset-badge" id="ds-badge">Visualizing: velodyne_000008.bin</span>
+    </div>
+
+    <div class="top-actions">
+      <select class="control-select" id="dataset-selector" style="font-size: 0.75rem;">
+        <option value="velodyne_000008.bin">KITTI Velodyne HDL-64E (000008.bin)</option>
+        <option value="waymo">Waymo Open Dataset (5-Laser Multi-Return)</option>
+      </select>
+      <button class="btn" id="btn-record">🔴 Record Lecture</button>
+      <button class="btn" id="btn-pip">🎥 Presenter PiP</button>
+      <button class="btn" id="btn-slice">✂️ Slicing Box</button>
+      <button class="btn" id="btn-caliper">📏 Caliper</button>
+      <button class="btn" id="btn-compete">⚔️ Compare Plugins</button>
+      <button class="btn" id="btn-dashboard">📊 Dashboard</button>
+      <button class="btn btn-primary" id="btn-run-rcmc">⚡ Run RCMC</button>
+    </div>
+  </div>
+
+  <!-- Slicing Box Panel -->
+  <div class="floating-dialog" id="panel-slice">
+    <div style="font-size: 0.74rem; font-weight: 700; color: var(--cyan); margin-bottom: 8px;">✂️ Cross-Section Slicing Tool</div>
+    <div class="control-row">
+      <span>Clip X Min/Max</span>
+      <input type="range" id="clip-x" min="-40" max="40" value="40" style="width: 100px;">
+    </div>
+    <div class="control-row">
+      <span>Clip Y Min/Max</span>
+      <input type="range" id="clip-y" min="-40" max="40" value="40" style="width: 100px;">
+    </div>
+    <div class="control-row">
+      <span>Clip Z Elevation</span>
+      <input type="range" id="clip-z" min="-5" max="15" value="15" style="width: 100px;">
+    </div>
+    <button class="btn" id="btn-reset-slice" style="width: 100%; justify-content: center; margin-top: 6px;">Reset Clipping Planes</button>
+  </div>
+
+  <!-- Main Wrap -->
+  <div class="main-wrap">
+
+    <!-- Left Ouster-Style Sidebar -->
+    <div class="sidebar">
+      <div class="sidebar-tabs">
+        <div class="s-tab active">Scene</div>
+        <div class="s-tab">Sensor</div>
+        <div class="s-tab">Plugins</div>
+      </div>
+
+      <div class="s-body">
+        <label class="toggle-row">
+          <input type="checkbox" id="chk-invert"> Invert Scene Background
+        </label>
+
+        <div class="sec-title">👁️ Point Cloud</div>
+        <div class="control-row">
+          <span>Color Field</span>
+          <select class="control-select" id="sel-color">
+            <option value="reflectivity">Reflectivity / Intensity</option>
+            <option value="height">Z-Height Gradient</option>
+            <option value="clusters">RCMC Clusters</option>
+            <option value="rings">Range Rings</option>
+          </select>
+        </div>
+
+        <div class="control-row">
+          <span>Point Size</span>
+          <input type="number" class="control-input" id="num-pt-size" value="2" min="1" max="10" style="width: 50px;">
+        </div>
+
+        <label class="toggle-row">
+          <input type="checkbox" id="chk-range-rings" checked> Range Rings (1m, 5m, 10m, 20m, 50m)
+        </label>
+        <label class="toggle-row">
+          <input type="checkbox" id="chk-auto-levels" checked> Auto-Levels Contrast
+        </label>
+        <label class="toggle-row">
+          <input type="checkbox" id="chk-noise-suppress"> Noise Suppression Filter
+        </label>
+
+        <div class="sec-title">📡 Laser Returns</div>
+        <label class="toggle-row">
+          <input type="checkbox" id="chk-ret1" checked> 1st Return (Strongest)
+        </label>
+        <label class="toggle-row">
+          <input type="checkbox" id="chk-ret2" checked> 2nd Return (Last)
+        </label>
+
+        <div class="sec-title">🖼️ 2D Image Strip</div>
+        <label class="toggle-row">
+          <input type="checkbox" id="chk-pano" checked> Show Cylindrical Panoramic Overlay
+        </label>
+        <label class="toggle-row">
+          <input type="checkbox" id="chk-rulers" checked> Show Azimuth Degree Rulers
+        </label>
+
+        <div class="sec-title">⚙️ Competing Plugins</div>
+        <div style="font-size: 0.72rem; color: var(--text-dim); margin-bottom: 8px;">
+          Available in Universal Testbed:
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 4px; font-size: 0.74rem;">
+          <label><input type="checkbox" checked> spatialforge_rcmc (v0.3.0)</label>
+          <label><input type="checkbox" checked> open3d_dbscan (v0.20.0)</label>
+          <label><input type="checkbox"> spatialforge_gicp (v0.3.0)</label>
+          <label><input type="checkbox"> kiss_icp_odometry (v1.2.0)</label>
+          <label><input type="checkbox"> spatialforge_pmcsf (v0.3.0)</label>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3D Viewport -->
+    <div class="viewport-box">
+      
+      <!-- 2D Panoramic Strip (Ouster Style) -->
+      <div class="pano-strip" id="pano-container">
+        <div class="pano-header">
+          <span>2D Cylindrical Intensity Projection</span>
+          <span style="font-family: monospace; color: var(--cyan);">512 x 64 px</span>
+        </div>
+        <div class="pano-canvas-wrap">
+          <canvas id="pano-canvas" width="512" height="64"></canvas>
+        </div>
+        <div class="pano-ruler">
+          <span>0°</span>
+          <span>90°</span>
+          <span>180°</span>
+          <span>270°</span>
+          <span>360°</span>
+        </div>
+      </div>
+
+      <!-- 3D Canvas -->
+      <div id="viewport-3d"></div>
+
+      <!-- Live Telemetry Floating Chips -->
+      <div class="stats-overlay">
+        <div class="stat-chip">Points: <strong id="val-pts">17,238</strong></div>
+        <div class="stat-chip">Clusters: <strong id="val-clusters">18 RCMC</strong></div>
+        <div class="stat-chip">Noise: <strong id="val-noise" style="color: var(--emerald);">0.38%</strong></div>
+        <div class="stat-chip">Latency: <strong id="val-lat">14.8 ms</strong></div>
+      </div>
+
+      <!-- Presenter Picture-in-Picture Studio Overlay -->
+      <div class="pip-container" id="pip-window">
+        <div class="pip-header" id="pip-drag-handle">
+          <span>🎥 Presenter Cam (Dr. Poux Mode)</span>
+          <span style="cursor: pointer;" id="pip-close">✕</span>
+        </div>
+        <video class="pip-video" id="pip-video" autoplay playsinline muted></video>
+        <canvas class="pip-audio-meter" id="pip-meter" width="220" height="12"></canvas>
+        <div class="pip-actions">
+          <button class="btn" id="pip-btn-mic" style="font-size: 0.68rem; padding: 2px 6px;">🎙️ Mic: ON</button>
+          <button class="btn" id="pip-btn-cam" style="font-size: 0.68rem; padding: 2px 6px;">📷 Cam: ON</button>
+        </div>
+      </div>
+
+      <!-- Caliper Measurement Readout -->
+      <div id="caliper-readout" style="position: absolute; top: 120px; left: 20px; background: rgba(13,17,26,0.9); border: 1px solid var(--border-accent); padding: 8px 14px; border-radius: 6px; font-size: 0.78rem; display: none; z-index: 60;">
+        <span>📏 Distance: <strong id="caliper-dist" style="color: var(--cyan); font-family: monospace;">0.00 m</strong></span>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- Bottom Playback Bar (Ouster Style) -->
+  <div class="playback-bar">
+    <button class="btn" id="btn-play">▶️ Play</button>
+    <div style="font-size: 0.74rem; font-family: monospace; color: var(--cyan);">
+      <span>00:45</span> / <span>03:49</span>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill"></div>
+    </div>
+    <div style="font-size: 0.72rem; font-family: monospace; color: var(--emerald);">
+      ● 30.0 Hz Live Stream (ROS 2 /velodyne_points)
+    </div>
+  </div>
+
+  <script>
+    // 3D Three.js Setup
+    const container = document.getElementById('viewport-3d');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x04060a);
+
+    const camera = new THREE.PerspectiveCamera(55, container.clientWidth / container.clientHeight, 0.1, 1000);
+    camera.position.set(18, -18, 14);
+    camera.up.set(0, 0, 1);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    container.appendChild(renderer.domElement);
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+
+    // Range Rings (Ouster-style concentric metric rings)
+    const ringsGroup = new THREE.Group();
+    [1, 5, 10, 20, 30, 50].forEach(r => {
+      const ringGeom = new THREE.RingGeometry(r - 0.05, r + 0.05, 128);
+      const ringMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, opacity: 0.35, transparent: true, side: THREE.DoubleSide });
+      const ring = new THREE.Mesh(ringGeom, ringMat);
+      ring.position.z = -1.73;
+      ringsGroup.add(ring);
+    });
+    scene.add(ringsGroup);
+
+    // Load Point Cloud & Render
+    let cloudPoints = null;
+    async function loadCloud(name = "velodyne_000008.bin") {
+      try {
+        const resp = await fetch(`/api/dataset/${name}`);
+        const data = await resp.json();
+
+        document.getElementById('val-pts').textContent = data.total_points.toLocaleString();
+
+        const pts = new Float32Array(data.points);
+        const intensities = new Float32Array(data.intensity);
+        const count = pts.length / 3;
+
+        const geom = new THREE.BufferGeometry();
+        geom.setAttribute('position', new THREE.BufferAttribute(pts, 3));
+
+        // Color by reflectivity turbo/plasma gradient
+        const cols = new Float32Array(count * 3);
+        for (let i = 0; i < count; i++) {
+          const val = Math.min(1.0, Math.max(0.0, intensities[i]));
+          cols[i*3] = Math.sin(val * Math.PI) * 0.8 + 0.2;
+          cols[i*3+1] = Math.cos(val * Math.PI * 0.5) * 0.7;
+          cols[i*3+2] = val * 0.9 + 0.1;
+        }
+        geom.setAttribute('color', new THREE.BufferAttribute(cols, 3));
+
+        if (cloudPoints) scene.remove(cloudPoints);
+        const mat = new THREE.PointsMaterial({ size: 0.14, vertexColors: true });
+        cloudPoints = new THREE.Points(geom, mat);
+        scene.add(cloudPoints);
+
+        // Render 2D panoramic projection strip
+        renderPanoramic(data.panoramic_preview);
+      } catch (err) {
+        console.warn("Could not load from API, rendering fallback", err);
+      }
+    }
+
+    function renderPanoramic(pano) {
+      if (!pano) return;
+      const canvas = document.getElementById('pano-canvas');
+      const ctx = canvas.getContext('2d');
+      const imgData = ctx.createImageData(pano.width, pano.height);
+      const vals = pano.values;
+
+      for (let i = 0; i < vals.length; i++) {
+        const v = Math.min(255, Math.max(0, Math.floor(vals[i] * 255)));
+        imgData.data[i*4] = v;
+        imgData.data[i*4+1] = Math.floor(v * 0.7);
+        imgData.data[i*4+2] = Math.floor(255 - v * 0.5);
+        imgData.data[i*4+3] = 255;
+      }
+      ctx.putImageData(imgData, 0, 0);
+    }
+
+    loadCloud();
+
+    // Toggle Range Rings
+    document.getElementById('chk-range-rings').addEventListener('change', (e) => {
+      ringsGroup.visible = e.target.checked;
+    });
+
+    // Toggle Invert Scene Background
+    document.getElementById('chk-invert').addEventListener('change', (e) => {
+      scene.background.set(e.target.checked ? 0xf8fafc : 0x04060a);
+    });
+
+    // Point Size
+    document.getElementById('num-pt-size').addEventListener('input', (e) => {
+      if (cloudPoints) cloudPoints.material.size = parseFloat(e.target.value) * 0.07;
+    });
+
+    // Run RCMC Plugin Button
+    document.getElementById('btn-run-rcmc').addEventListener('click', async () => {
+      const resp = await fetch('/api/plugins/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plugin_name: 'spatialforge_rcmc', dataset_path: 'velodyne_000008.bin' })
+      });
+      const data = await resp.json();
+      document.getElementById('val-clusters').textContent = `${data.metrics.num_clusters} RCMC`;
+      document.getElementById('val-noise').textContent = `${(data.metrics.noise_fraction * 100).toFixed(2)}%`;
+      document.getElementById('val-lat').textContent = `${data.latency_ms.toFixed(1)} ms`;
+      alert(`SpatialForge-3D RCMC Clustered: ${data.metrics.num_clusters} objects, ${(data.metrics.noise_fraction*100).toFixed(2)}% noise in ${data.latency_ms}ms!`);
+    });
+
+    // Competing Plugins Comparison
+    document.getElementById('btn-compete').addEventListener('click', async () => {
+      const resp = await fetch('/api/experiments/compare', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          plugin_names: ['spatialforge_rcmc', 'open3d_dbscan'],
+          dataset_path: 'velodyne_000008.bin'
+        })
+      });
+      const data = await resp.json();
+      const m = data.comparison_matrix;
+      alert(`COMPETING ALGORITHM BENCHMARK:
+
+1. ${m[0].plugin}: ${m[0].num_clusters} clusters, noise=${(m[0].noise_fraction*100).toFixed(2)}%, lat=${m[0].latency_ms}ms
+2. ${m[1].plugin}: ${m[1].num_clusters} clusters, noise=${(m[1].noise_fraction*100).toFixed(2)}%, lat=${m[1].latency_ms}ms
+
+Gain: ${( (m[1].noise_fraction - m[0].noise_fraction)/m[1].noise_fraction * 100 ).toFixed(1)}% Noise Reduction with RCMC!`);
+    });
+
+    // Screen Recording & Replays (MediaRecorder)
+    let mediaRecorder = null;
+    let recordedChunks = [];
+    let recordInterval = null;
+    let recordSec = 0;
+    const btnRecord = document.getElementById('btn-record');
+
+    btnRecord.addEventListener('click', async () => {
+      if (!mediaRecorder || mediaRecorder.state === 'inactive') {
+        try {
+          const stream = renderer.domElement.captureStream(60);
+          mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp9' });
+          recordedChunks = [];
+          mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
+          mediaRecorder.onstop = () => {
+            clearInterval(recordInterval);
+            const blob = new Blob(recordedChunks, { type: 'video/webm' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `SpatialForge_Lecture_${Date.now()}.webm`;
+            a.click();
+            btnRecord.textContent = '🔴 Record Lecture';
+            btnRecord.classList.remove('recording-badge');
+            alert('Lecture recording saved! Download has started.');
+          };
+          mediaRecorder.start();
+          recordSec = 0;
+          btnRecord.classList.add('recording-badge');
+          btnRecord.textContent = '⏹️ Stop [00:00]';
+          recordInterval = setInterval(() => {
+            recordSec++;
+            const mm = String(Math.floor(recordSec / 60)).padStart(2, '0');
+            const ss = String(recordSec % 60).padStart(2, '0');
+            btnRecord.textContent = `⏹️ Stop [${mm}:${ss}]`;
+          }, 1000);
+        } catch (err) {
+          alert('Screen recording not supported in this browser environment: ' + err.message);
+        }
+      } else {
+        mediaRecorder.stop();
+      }
+    });
+
+    // Picture-in-Picture (PiP) Presenter Studio (Webcam & Mic)
+    const pipWindow = document.getElementById('pip-window');
+    const pipVideo = document.getElementById('pip-video');
+    const pipMeter = document.getElementById('pip-meter');
+    const btnPiP = document.getElementById('btn-pip');
+    let pipStream = null;
+    let audioCtx = null;
+    let analyser = null;
+
+    btnPiP.addEventListener('click', async () => {
+      if (pipWindow.style.display === 'block') {
+        pipWindow.style.display = 'none';
+        btnPiP.classList.remove('active');
+        if (pipStream) { pipStream.getTracks().forEach(t => t.stop()); pipStream = null; }
+      } else {
+        try {
+          pipStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+          pipVideo.srcObject = pipStream;
+          pipWindow.style.display = 'block';
+          btnPiP.classList.add('active');
+
+          // Audio Visualizer VU Meter
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          const src = audioCtx.createMediaStreamSource(pipStream);
+          analyser = audioCtx.createAnalyser();
+          analyser.fftSize = 64;
+          src.connect(analyser);
+
+          const mCtx = pipMeter.getContext('2d');
+          const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+          function drawMeter() {
+            if (pipWindow.style.display === 'block') requestAnimationFrame(drawMeter);
+            analyser.getByteFrequencyData(dataArray);
+            mCtx.fillStyle = '#06090e';
+            mCtx.fillRect(0, 0, pipMeter.width, pipMeter.height);
+            const barWidth = (pipMeter.width / dataArray.length) * 1.5;
+            let x = 0;
+            for (let i = 0; i < dataArray.length; i++) {
+              const h = (dataArray[i] / 255) * pipMeter.height;
+              mCtx.fillStyle = dataArray[i] > 180 ? '#f43f5e' : (dataArray[i] > 120 ? '#fbbf24' : '#38bdf8');
+              mCtx.fillRect(x, pipMeter.height - h, barWidth, h);
+              x += barWidth + 1;
+            }
+          }
+          drawMeter();
+        } catch (err) {
+          // Fallback demo presenter avatar if physical webcam is blocked
+          pipWindow.style.display = 'block';
+          btnPiP.classList.add('active');
+          pipVideo.poster = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 130"><rect width="200" height="130" fill="%230b111b"/><circle cx="100" cy="55" r="28" fill="%2338bdf8"/><path d="M60 120 C60 90 140 90 140 120 Z" fill="%230284c7"/><text x="100" y="62" font-size="20" text-anchor="middle" fill="white">🎓</text></svg>';
+        }
+      }
+    });
+
+    document.getElementById('pip-close').addEventListener('click', () => {
+      pipWindow.style.display = 'none';
+      btnPiP.classList.remove('active');
+      if (pipStream) pipStream.getTracks().forEach(t => t.stop());
+    });
+
+    // Cross-Section Slicing Box Tool
+    const panelSlice = document.getElementById('panel-slice');
+    const btnSlice = document.getElementById('btn-slice');
+    renderer.localClippingEnabled = true;
+
+    const clipPlaneZ = new THREE.Plane(new THREE.Vector3(0, 0, -1), 15);
+    const clipPlaneX = new THREE.Plane(new THREE.Vector3(-1, 0, 0), 40);
+    const clipPlaneY = new THREE.Plane(new THREE.Vector3(0, -1, 0), 40);
+    renderer.clippingPlanes = [];
+
+    btnSlice.addEventListener('click', () => {
+      const isVis = panelSlice.style.display === 'block';
+      panelSlice.style.display = isVis ? 'none' : 'block';
+      btnSlice.classList.toggle('active', !isVis);
+      renderer.clippingPlanes = isVis ? [] : [clipPlaneZ, clipPlaneX, clipPlaneY];
+    });
+
+    document.getElementById('clip-z').addEventListener('input', (e) => {
+      clipPlaneZ.constant = parseFloat(e.target.value);
+    });
+    document.getElementById('clip-x').addEventListener('input', (e) => {
+      clipPlaneX.constant = parseFloat(e.target.value);
+    });
+    document.getElementById('clip-y').addEventListener('input', (e) => {
+      clipPlaneY.constant = parseFloat(e.target.value);
+    });
+    document.getElementById('btn-reset-slice').addEventListener('click', () => {
+      clipPlaneZ.constant = 15; clipPlaneX.constant = 40; clipPlaneY.constant = 40;
+      document.getElementById('clip-z').value = 15;
+      document.getElementById('clip-x').value = 40;
+      document.getElementById('clip-y').value = 40;
+    });
+
+    // 3D Caliper Tool (Click Two Points to Measure)
+    const btnCaliper = document.getElementById('btn-caliper');
+    const caliperReadout = document.getElementById('caliper-readout');
+    let caliperActive = false;
+    let caliperPoints = [];
+
+    btnCaliper.addEventListener('click', () => {
+      caliperActive = !caliperActive;
+      btnCaliper.classList.toggle('active', caliperActive);
+      caliperReadout.style.display = caliperActive ? 'block' : 'none';
+      caliperPoints = [];
+      document.getElementById('caliper-dist').textContent = caliperActive ? 'Click point 1...' : '0.00 m';
+    });
+
+    container.addEventListener('click', (event) => {
+      if (!caliperActive || !cloudPoints) return;
+      const rect = renderer.domElement.getBoundingClientRect();
+      const mouse = new THREE.Vector2(
+        ((event.clientX - rect.left) / rect.width) * 2 - 1,
+        -((event.clientY - rect.top) / rect.height) * 2 + 1
+      );
+      const raycaster = new THREE.Raycaster();
+      raycaster.params.Points.threshold = 0.5;
+      raycaster.setFromCamera(mouse, camera);
+      const intersects = raycaster.intersectObject(cloudPoints);
+      if (intersects.length > 0) {
+        caliperPoints.push(intersects[0].point.clone());
+        if (caliperPoints.length === 1) {
+          document.getElementById('caliper-dist').textContent = 'Click point 2...';
+        } else if (caliperPoints.length >= 2) {
+          const d = caliperPoints[0].distanceTo(caliperPoints[1]);
+          document.getElementById('caliper-dist').textContent = `${d.toFixed(3)} m (dX: ${Math.abs(caliperPoints[0].x - caliperPoints[1].x).toFixed(2)}m, dY: ${Math.abs(caliperPoints[0].y - caliperPoints[1].y).toFixed(2)}m, dZ: ${Math.abs(caliperPoints[0].z - caliperPoints[1].z).toFixed(2)}m)`;
+          caliperPoints = [];
+        }
+      }
+    });
+
+    // Dashboard redirect
+    document.getElementById('btn-dashboard').addEventListener('click', () => {
+      window.location.href = '/artifacts/velodyne_dashboard.html';
+    });
+
+    window.addEventListener('resize', () => {
+      camera.aspect = container.clientWidth / container.clientHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(container.clientWidth, container.clientHeight);
+    });
+
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
+    }
+    animate();
+  </script>
+</body>
+</html>

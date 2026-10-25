@@ -1,0 +1,7 @@
+seed: 42
+task: clustering
+input: ../examples/synthetic.npz
+algorithm:
+  method: dbscan
+  eps: 0.28
+  min_samples: 5

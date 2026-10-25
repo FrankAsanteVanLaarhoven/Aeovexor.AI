@@ -1,0 +1,30 @@
+{
+  "schema": "spatialforge3d.run.v1",
+  "version": "1.0.0",
+  "task": "clustering",
+  "seed": 42,
+  "config": {
+    "seed": 42,
+    "task": "clustering",
+    "input": "../examples/velodyne_000008.bin",
+    "format": "bin",
+    "voxel_size": 0.3,
+    "algorithm": {
+      "method": "adaptive",
+      "eps": 0.8,
+      "min_samples": 6,
+      "normal_weight": 0.5,
+      "range_adaptive": true
+    }
+  },
+  "inputs": {
+    "input": {
+      "path": "/Users/favl/Downloads/spatialforge3d_benchmark/configs/../examples/velodyne_000008.bin",
+      "sha256": "3b9de6cc966534900f6a1bdc93b21772e47a334eb2ef18082021956520d902d1"
+    }
+  },
+  "python": "3.11.4",
+  "numpy": "1.25.2",
+  "platform": "macOS-26.3.1-arm64-arm-64bit",
+  "pid": 36948
+}
