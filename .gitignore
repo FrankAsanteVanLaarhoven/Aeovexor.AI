@@ -49,3 +49,9 @@ native/cpp/build/
 native/rust/target/
 services/go-telemetry/aeovexor-telemetry-service
 
+# Next.js frontend
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+
+
