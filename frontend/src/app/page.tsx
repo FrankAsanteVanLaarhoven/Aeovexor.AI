@@ -2,8 +2,10 @@
 
 import React, { useState } from "react";
 import Viewport3D from "../components/Viewport3D";
+import ViewportSplit3D from "../components/ViewportSplit3D";
 import CloudCompareToolbar from "../components/CloudCompareToolbar";
 import TelemetryHUD from "../components/TelemetryHUD";
+import AIResearcherModal from "../components/AIResearcherModal";
 
 export default function StudioPage() {
   const [isOrtho, setIsOrtho] = useState(false);
@@ -12,10 +14,11 @@ export default function StudioPage() {
   const [isPiPActive, setIsPiPActive] = useState(false);
   const [isLaserActive, setIsLaserActive] = useState(false);
   const [isTourActive, setIsTourActive] = useState(false);
+  const [isSplitScreen, setIsSplitScreen] = useState(false);
+  const [isResearcherOpen, setIsResearcherOpen] = useState(false);
   const [recordedVideoUrl, setRecordedVideoUrl] = useState<string | null>(null);
 
   const handleCameraView = (view: string) => {
-    // Standard view dispatch
     console.log("[CAMERA VIEW]", view);
   };
 
@@ -53,6 +56,18 @@ export default function StudioPage() {
           <div className="px-2.5 py-1 rounded bg-white/5 border border-white/10 text-xs font-mono text-slate-300">
             velodyne_000008.bin
           </div>
+
+          {/* Split Screen Toggle */}
+          <button
+            onClick={() => setIsSplitScreen((s) => !s)}
+            className={`px-2.5 py-1 rounded text-xs font-mono font-semibold border transition-all ${
+              isSplitScreen
+                ? "bg-cyan-500/20 text-cyan border-cyan/40"
+                : "bg-white/5 text-slate-400 border-white/10 hover:text-white"
+            }`}
+          >
+            {isSplitScreen ? "Split View [A/B] Active" : "Single View"}
+          </button>
         </div>
 
         {/* Center: Live Polyglot Telemetry HUD */}
@@ -60,9 +75,19 @@ export default function StudioPage() {
 
         {/* Right Controls */}
         <div className="flex items-center gap-2">
-          <div className="px-2.5 py-1 rounded text-xs font-mono font-bold bg-cyan-500/10 text-cyan border border-cyan/30">
-            PROCESSED [B]
-          </div>
+          {/* AI / SI Researcher Button */}
+          <button
+            onClick={() => setIsResearcherOpen(true)}
+            className="px-3 py-1 rounded text-xs font-mono font-bold bg-cyan text-black hover:bg-cyan/90 transition-all flex items-center gap-1.5 shadow-lg"
+          >
+            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path d="M12 2L2 7l10 5 10-5-10-5z" />
+              <path d="M2 17l10 5 10-5" />
+              <path d="M2 12l10 5 10-5" />
+            </svg>
+            AI Researcher
+          </button>
+
           <button className="px-3 py-1 rounded text-xs font-mono font-semibold bg-white/5 hover:bg-white/10 border border-white/10 text-slate-200">
             Export 3D
           </button>
@@ -122,20 +147,30 @@ export default function StudioPage() {
             onAddPin={() => console.log("Add pin")}
           />
 
-          {/* Three.js Dynamic Viewport */}
-          <Viewport3D
-            isOrtho={isOrtho}
-            activeTool={activeTool}
-            isTourActive={isTourActive}
-            isLaserActive={isLaserActive}
-            isPiPActive={isPiPActive}
-            isRecording={isRecording}
-            onStopRecording={handleStopRecording}
-          />
+          {/* Three.js Dynamic Viewport (Single or Split Screen) */}
+          {isSplitScreen ? (
+            <ViewportSplit3D isOrtho={isOrtho} />
+          ) : (
+            <Viewport3D
+              isOrtho={isOrtho}
+              activeTool={activeTool}
+              isTourActive={isTourActive}
+              isLaserActive={isLaserActive}
+              isPiPActive={isPiPActive}
+              isRecording={isRecording}
+              onStopRecording={handleStopRecording}
+            />
+          )}
         </section>
       </div>
 
-      {/* 3. Recorded Video Playback Modal */}
+      {/* 3. AI / SI Autonomous Researcher Modal */}
+      <AIResearcherModal
+        isOpen={isResearcherOpen}
+        onClose={() => setIsResearcherOpen(false)}
+      />
+
+      {/* 4. Recorded Video Playback Modal */}
       {recordedVideoUrl && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-6">
           <div className="flex flex-col bg-[#0B0F17] border border-cyan/40 rounded-xl p-4 max-w-3xl w-full shadow-2xl">
