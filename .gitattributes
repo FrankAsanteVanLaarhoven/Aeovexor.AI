@@ -1,0 +1,19 @@
+# GitHub Linguist Language Detection Configuration
+# Marks generated benchmark visualizations, export artifacts, and papers as generated
+# so GitHub accurately displays project source code (Python, TypeScript, C++, Rust, Go)
+
+artifacts/** linguist-generated
+artifacts/**/*.html linguist-generated
+artifacts/**/*.json linguist-generated
+artifacts/**/*.obj linguist-generated
+artifacts/**/*.npz linguist-generated
+artifacts/**/*.npy linguist-generated
+
+workspace/research_outputs/** linguist-generated
+workspace/research_outputs/**/*.html linguist-generated
+workspace/research_outputs/**/*.ipynb linguist-generated
+workspace/research_outputs/**/*.md linguist-generated
+
+examples/** linguist-generated
+examples/**/*.bin linguist-generated
+examples/**/*.npz linguist-generated
