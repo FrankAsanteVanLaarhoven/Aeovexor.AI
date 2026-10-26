@@ -265,3 +265,61 @@ def test_all_benchmarks():
     priv_res = priv_bench.audit_redaction([face], ground_truth_pii_count=1)
     assert priv_res["passed_compliance_audit"] is True
     assert priv_res["unredacted_leaks"] == 0
+
+
+def test_enterprise_fastapi_endpoints():
+    from fastapi.testclient import TestClient
+    from workspace.server import app
+
+    client = TestClient(app)
+
+    # 1. Status endpoint
+    res_status = client.get("/api/enterprise/status")
+    assert res_status.status_code == 200
+    data = res_status.json()
+    assert data["status"] == "healthy"
+    assert "ingestion" in data["services"]
+    assert "ros2_bridge" in data["robotics"]
+
+    # 2. Object detection endpoint
+    fake_pts = [[10.0, 4.0, 0.0], [10.5, 4.2, 0.5]]
+    res_obj = client.post("/api/enterprise/detect/objects", json={"points": fake_pts})
+    assert res_obj.status_code == 200
+    assert "objects" in res_obj.json()
+
+    # 3. Person detection endpoint
+    res_ped = client.post("/api/enterprise/detect/persons", json={"points": fake_pts})
+    assert res_ped.status_code == 200
+    assert "persons" in res_ped.json()
+
+    # 4. Pose endpoint
+    fake_box = {
+        "id": "PED_01",
+        "label": "Person",
+        "x": 2.0,
+        "y": 4.0,
+        "z": 0.0,
+        "dx": 0.6,
+        "dy": 0.6,
+        "dz": 1.7,
+        "yaw": 0.0,
+        "confidence": 0.9,
+    }
+    res_pose = client.post("/api/enterprise/pose", json={"person_box": fake_box})
+    assert res_pose.status_code == 200
+    assert len(res_pose.json()["pose"]["keypoints"]) == 17
+
+    # 5. Tracking endpoint
+    res_track = client.post("/api/enterprise/track", json={"boxes": [fake_box], "dt": 0.1})
+    assert res_track.status_code == 200
+    assert res_track.json()["active_tracks_count"] >= 1
+
+    # 6. Safety evaluation endpoint
+    res_safety = client.post("/api/enterprise/safety/evaluate", json={"boxes": [fake_box], "speed": 1.5})
+    assert res_safety.status_code == 200
+    assert "safety_event" in res_safety.json()
+
+    # 7. Benchmarks endpoint
+    res_bench = client.post("/api/enterprise/benchmarks/run", json={"benchmark": "detection"})
+    assert res_bench.status_code == 200
+    assert res_bench.json()["suite"] == "detection"
