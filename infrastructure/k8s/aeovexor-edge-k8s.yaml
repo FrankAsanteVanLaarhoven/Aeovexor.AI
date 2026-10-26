@@ -1,0 +1,86 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: aeovexor-spatial
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aeovexor-polyglot-edge
+  namespace: aeovexor-spatial
+  labels:
+    app: aeovexor
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: aeovexor
+  template:
+    metadata:
+      labels:
+        app: aeovexor
+    spec:
+      containers:
+        # Container 1: Go 60Hz Telemetry Streaming Microservice
+        - name: telemetry-service
+          image: aeovexor/telemetry-service:latest
+          ports:
+            - containerPort: 8766
+          resources:
+            limits:
+              cpu: "1000m"
+              memory: "512Mi"
+            requests:
+              cpu: "250m"
+              memory: "128Mi"
+
+        # Container 2: FastAPI Python Backend (C++ SIMD + Rust CLI)
+        - name: backend-api
+          image: aeovexor/backend-api:latest
+          ports:
+            - containerPort: 8765
+          env:
+            - name: HOST
+              value: "0.0.0.0"
+            - name: PORT
+              value: "8765"
+          resources:
+            limits:
+              cpu: "4000m"
+              memory: "4Gi"
+            requests:
+              cpu: "1000m"
+              memory: "1Gi"
+
+        # Container 3: Next.js 15 Edge Console
+        - name: frontend-console
+          image: aeovexor/frontend:latest
+          ports:
+            - containerPort: 3000
+          resources:
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
+            requests:
+              cpu: "250m"
+              memory: "256Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: aeovexor-edge-service
+  namespace: aeovexor-spatial
+spec:
+  type: LoadBalancer
+  selector:
+    app: aeovexor
+  ports:
+    - name: http-frontend
+      port: 3000
+      targetPort: 3000
+    - name: http-backend
+      port: 8765
+      targetPort: 8765
+    - name: sse-telemetry
+      port: 8766
+      targetPort: 8766
