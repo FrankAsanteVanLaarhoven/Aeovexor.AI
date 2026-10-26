@@ -6,8 +6,10 @@ const __dirname = path.dirname(__filename);
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: true,
+  reactStrictMode: false, // Prevent React 19 double-mount from destroying WebGL canvas context
+  transpilePackages: ['three'],
   outputFileTracingRoot: __dirname,
+  devIndicators: false, // Disable Next.js dev indicators and the 'N' floating button
   async rewrites() {
     return [
       {
@@ -27,4 +29,3 @@ const nextConfig = {
 };
 
 export default nextConfig;
-

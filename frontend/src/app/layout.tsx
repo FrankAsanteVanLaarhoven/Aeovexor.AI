@@ -3,10 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "AEOVEXOR Studio — Precision 3D Geometry & Spatial Perception",
-  description: "Next.js 15 Modular 3D Spatial Intelligence platform accelerated by C++, Rust, and Go microservices.",
-  icons: {
-    icon: "/favicon.ico",
-  },
+  description: "Enterprise Precision 3D Spatial Intelligence Platform accelerated by C++, Rust, and Go microservices.",
 };
 
 export default function RootLayout({

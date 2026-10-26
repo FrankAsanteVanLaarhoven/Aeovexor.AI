@@ -2,8 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import Viewport3D from "../components/Viewport3D";
-import ViewportSplit3D from "../components/ViewportSplit3D";
+import dynamic from "next/dynamic";
 import CloudCompareToolbar from "../components/CloudCompareToolbar";
 import TelemetryHUD from "../components/TelemetryHUD";
 import AIResearcherModal from "../components/AIResearcherModal";
@@ -16,6 +15,25 @@ import {
   detectEnterprisePersons,
   evaluateRoboticsSafety,
 } from "../lib/api";
+
+const Viewport3D = dynamic(() => import("../components/Viewport3D"), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-full flex items-center justify-center bg-[#05070B] text-cyan font-mono text-xs">
+      <span className="w-2 h-2 rounded-full bg-cyan animate-ping mr-2" />
+      Initializing SpatialForge 3D Engine...
+    </div>
+  ),
+});
+
+const ViewportSplit3D = dynamic(() => import("../components/ViewportSplit3D"), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-full flex items-center justify-center bg-[#05070B] text-cyan font-mono text-xs">
+      Initializing Dual Viewports...
+    </div>
+  ),
+});
 
 export default function StudioPage() {
   const [isOrtho, setIsOrtho] = useState(false);
