@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import Viewport3D from "../components/Viewport3D";
 import ViewportSplit3D from "../components/ViewportSplit3D";
@@ -9,7 +9,13 @@ import TelemetryHUD from "../components/TelemetryHUD";
 import AIResearcherModal from "../components/AIResearcherModal";
 import AnnotationSuite, { BoundingBox3D } from "../components/AnnotationSuite";
 import LiDARIngestModal, { LoadedCloudData } from "../components/LiDARIngestModal";
+import BenchmarkModal from "../components/BenchmarkModal";
 import { ColormapMode } from "../lib/shaders";
+import {
+  detectEnterpriseObjects,
+  detectEnterprisePersons,
+  evaluateRoboticsSafety,
+} from "../lib/api";
 
 export default function StudioPage() {
   const [isOrtho, setIsOrtho] = useState(false);
@@ -22,10 +28,25 @@ export default function StudioPage() {
   const [isResearcherOpen, setIsResearcherOpen] = useState(false);
   const [isIngestOpen, setIsIngestOpen] = useState(false);
   const [isAnnotationsOpen, setIsAnnotationsOpen] = useState(false);
+  const [isBenchmarkOpen, setIsBenchmarkOpen] = useState(false);
   const [isLiveStreaming, setIsLiveStreaming] = useState(false);
   const [colormapMode, setColormapMode] = useState<ColormapMode>("viridis");
   const [recordedVideoUrl, setRecordedVideoUrl] = useState<string | null>(null);
   const [customCloud, setCustomCloud] = useState<LoadedCloudData | null>(null);
+  const [isDetecting, setIsDetecting] = useState(false);
+
+  // Safety Zone State
+  const [safetyStatus, setSafetyStatus] = useState<{
+    zone: string;
+    e_stop: boolean;
+    speed: number;
+    dist: number;
+  }>({
+    zone: "CLEAR",
+    e_stop: false,
+    speed: 1.6,
+    dist: 12.0,
+  });
 
   // 3D Bounding Boxes State
   const [boxes, setBoxes] = useState<BoundingBox3D[]>([
@@ -68,6 +89,37 @@ export default function StudioPage() {
   ]);
   const [selectedBoxId, setSelectedBoxId] = useState<string | null>("VEH_001");
 
+  // Re-evaluate safety whenever boxes change
+  useEffect(() => {
+    let isCancelled = false;
+    evaluateRoboticsSafety(boxes, 1.2)
+      .then((res) => {
+        if (!isCancelled && res?.safety_event) {
+          const ev = res.safety_event;
+          setSafetyStatus({
+            zone: ev.zone_name.replace("_ZONE", ""),
+            e_stop: ev.e_stop_triggered,
+            speed: ev.recommended_speed_limit_mps,
+            dist: ev.intrusion_distance_m,
+          });
+        }
+      })
+      .catch(() => {
+        // Fallback local calculation
+        const minDist = Math.min(...boxes.map((b) => Math.sqrt(b.x * b.x + b.y * b.y + b.z * b.z)));
+        setSafetyStatus({
+          zone: minDist < 2.0 ? "E-STOP" : minDist < 4.0 ? "SLOWDOWN" : "CLEAR",
+          e_stop: minDist < 2.0,
+          speed: minDist < 2.0 ? 0.0 : minDist < 4.0 ? 0.6 : 1.6,
+          dist: minDist,
+        });
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [boxes]);
+
   const handleCameraView = (view: string) => {
     console.log("[CAMERA VIEW]", view);
   };
@@ -80,6 +132,56 @@ export default function StudioPage() {
     const url = URL.createObjectURL(blob);
     setRecordedVideoUrl(url);
     setIsRecording(false);
+  };
+
+  // Run AI Auto-Detection on active point cloud
+  const handleRunAIDetection = async () => {
+    setIsDetecting(true);
+    try {
+      // Gather sample coordinates from custom cloud or simulated frame
+      const samplePts: number[][] = [];
+      if (customCloud && customCloud.positions) {
+        const step = Math.max(1, Math.floor(customCloud.positions.length / (3 * 500)));
+        for (let i = 0; i < customCloud.positions.length / 3; i += step) {
+          samplePts.push([
+            customCloud.positions[i * 3],
+            customCloud.positions[i * 3 + 1],
+            customCloud.positions[i * 3 + 2],
+          ]);
+        }
+      } else {
+        // Synthesize dynamic clusters
+        for (let i = 0; i < 200; i++) {
+          samplePts.push([10 + (Math.random() - 0.5) * 4, 5 + (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 1.5]);
+          samplePts.push([-6 + (Math.random() - 0.5) * 0.8, 14 + (Math.random() - 0.5) * 0.8, (Math.random() - 0.5) * 1.8]);
+        }
+      }
+
+      const [objsRes, pedsRes] = await Promise.all([
+        detectEnterpriseObjects(samplePts).catch(() => ({ objects: [] })),
+        detectEnterprisePersons(samplePts).catch(() => ({ persons: [] })),
+      ]);
+
+      const detected = [...(objsRes.objects || []), ...(pedsRes.persons || [])];
+      if (detected.length > 0) {
+        const formatted: BoundingBox3D[] = detected.map((d: any, idx: number) => ({
+          id: d.id || `AI_OBJ_${idx + 1}`,
+          label: d.label || "Vehicle",
+          x: d.x,
+          y: d.y,
+          z: d.z,
+          dx: d.dx,
+          dy: d.dy,
+          dz: d.dz,
+          yaw: d.yaw || 0,
+          confidence: d.confidence || 0.94,
+        }));
+        setBoxes(formatted);
+        if (formatted.length > 0) setSelectedBoxId(formatted[0].id);
+      }
+    } finally {
+      setIsDetecting(false);
+    }
   };
 
   // Add Box Handler
@@ -121,7 +223,6 @@ export default function StudioPage() {
       filename += ".txt";
       content = boxes
         .map((b) => {
-          // KITTI format: type truncated occluded alpha bbox_2d(4) dimensions(h,w,l) location(x,y,z) rotation_y
           const rotY = ((b.yaw * Math.PI) / 180).toFixed(2);
           return `${b.label} 0.00 0 0.00 0.00 0.00 50.00 50.00 ${b.dz.toFixed(2)} ${b.dy.toFixed(
             2
@@ -186,6 +287,31 @@ export default function StudioPage() {
             </span>
           </button>
 
+          {/* Dynamic ISO 13849 Safety Badge */}
+          <div
+            className={`px-2.5 py-1 rounded text-xs font-mono font-bold flex items-center gap-1.5 border transition-all ${
+              safetyStatus.e_stop
+                ? "bg-rose-500/20 text-rose-400 border-rose-500 animate-pulse"
+                : safetyStatus.zone === "SLOWDOWN"
+                ? "bg-amber-500/20 text-amber-400 border-amber-500/50"
+                : "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+            }`}
+            title={`ISO 13849 Safety Perimeter: Intrusion Distance ${safetyStatus.dist.toFixed(1)}m, Max Speed ${safetyStatus.speed}m/s`}
+          >
+            <span
+              className={`w-2 h-2 rounded-full ${
+                safetyStatus.e_stop
+                  ? "bg-rose-500"
+                  : safetyStatus.zone === "SLOWDOWN"
+                  ? "bg-amber-400"
+                  : "bg-emerald-400"
+              }`}
+            />
+            <span>
+              ISO 13849: {safetyStatus.zone} ({safetyStatus.speed.toFixed(1)} m/s)
+            </span>
+          </div>
+
           {/* Split Screen Toggle */}
           <button
             onClick={() => setIsSplitScreen((s) => !s)}
@@ -204,6 +330,17 @@ export default function StudioPage() {
 
         {/* Right Controls */}
         <div className="flex items-center gap-2">
+          {/* Autonomous Benchmarks Trigger */}
+          <button
+            onClick={() => setIsBenchmarkOpen(true)}
+            className="px-2.5 py-1 rounded text-xs font-mono font-semibold bg-white/5 hover:bg-white/10 border border-white/10 text-slate-200 transition-all flex items-center gap-1.5"
+          >
+            <svg className="w-3.5 h-3.5 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+            </svg>
+            Benchmarks
+          </button>
+
           {/* AI / SI Researcher Button */}
           <button
             onClick={() => setIsResearcherOpen(true)}
@@ -260,6 +397,27 @@ export default function StudioPage() {
                   + EDIT 3D BOXES
                 </button>
               </div>
+
+              {/* AI Auto-Detection Action Bar */}
+              <button
+                onClick={handleRunAIDetection}
+                disabled={isDetecting}
+                className="w-full py-2 rounded bg-cyan/15 hover:bg-cyan/25 border border-cyan/40 text-cyan font-bold transition-all flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
+              >
+                {isDetecting ? (
+                  <>
+                    <span className="w-2 h-2 rounded-full bg-cyan animate-ping" />
+                    <span>Running 3D Perception...</span>
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                    </svg>
+                    <span>Run AI Auto-Detection</span>
+                  </>
+                )}
+              </button>
 
               {/* Detections List */}
               <div className="flex flex-col gap-2">
@@ -352,13 +510,19 @@ export default function StudioPage() {
         onCloudLoaded={(loaded) => setCustomCloud(loaded)}
       />
 
-      {/* 4. AI / SI Autonomous Researcher Modal */}
+      {/* 4. Autonomous Benchmarks Modal */}
+      <BenchmarkModal
+        isOpen={isBenchmarkOpen}
+        onClose={() => setIsBenchmarkOpen(false)}
+      />
+
+      {/* 5. AI / SI Autonomous Researcher Modal */}
       <AIResearcherModal
         isOpen={isResearcherOpen}
         onClose={() => setIsResearcherOpen(false)}
       />
 
-      {/* 5. Recorded Video Playback Modal */}
+      {/* 6. Recorded Video Playback Modal */}
       {recordedVideoUrl && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-6">
           <div className="flex flex-col bg-[#0B0F17] border border-cyan/40 rounded-xl p-4 max-w-3xl w-full shadow-2xl">
