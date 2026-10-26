@@ -1,0 +1,36 @@
+# Multi-stage Dockerfile for Aeovexor Backend (Python 3.11 + C++ SIMD + Rust)
+FROM python:3.11-slim AS base
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    cmake \
+    clang \
+    curl \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Rust toolchain for native CLI compilation
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+WORKDIR /app
+
+# Build C++ native library
+COPY native/cpp ./native/cpp
+RUN cd native/cpp && cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build --config Release
+
+# Build Rust native core
+COPY native/rust ./native/rust
+RUN cd native/rust && cargo build --release
+
+# Install Python dependencies
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt uvicorn
+
+# Copy application source
+COPY spatialforge ./spatialforge
+COPY workspace ./workspace
+
+EXPOSE 8765
+
+CMD ["python3", "-m", "uvicorn", "workspace.server:app", "--host", "0.0.0.0", "--port", "8765"]
